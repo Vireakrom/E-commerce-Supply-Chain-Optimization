@@ -14,7 +14,7 @@ warnings.filterwarnings('ignore')
 plt.style.use('seaborn-v0_8')
 sns.set_palette("husl")
 
-def load_and_explore_data(file_path):
+def load_and_explore_data(file_path, sample_size=20000):
     """
     Load the supply chain dataset and perform initial exploration
     """
@@ -24,14 +24,19 @@ def load_and_explore_data(file_path):
         # Load the dataset with proper encoding handling
         try:
             df = pd.read_csv(file_path, encoding='utf-8')
-        except UnicodeDecodeError:
+        except UnicodeDecodeError:  
             try:
                 df = pd.read_csv(file_path, encoding='latin-1')
             except UnicodeDecodeError:
                 df = pd.read_csv(file_path, encoding='cp1252')
         
         print(f"✓ Dataset loaded successfully!")
-        print(f"✓ Shape: {df.shape}")
+        print(f"✓ Shape before sampling: {df.shape}")
+        
+        # Sample the dataset if it exceeds the sample size
+        if len(df) > sample_size:
+            df = df.sample(n=sample_size, random_state=42)
+            print(f"✓ Dataset sampled to {sample_size} rows")
         
         # Basic information about the dataset
         print("\n" + "="*50)
@@ -130,22 +135,22 @@ def exploratory_data_analysis(df):
     print("\n" + "="*50)
     print("EXPLORATORY DATA ANALYSIS")
     print("="*50)
-    
+
     if df is None:
         return
-    
+
     # Create visualizations directory
     import os
     if not os.path.exists('visualizations'):
         os.makedirs('visualizations')
-    
+
     # 1. Sales trends over time
     plt.figure(figsize=(15, 10))
-    
+
     # Find date and sales columns
     date_cols = []
     sales_cols = []
-    
+
     for col in df.columns:
         if 'date' in col.lower() or 'time' in col.lower():
             if df[col].dtype == 'datetime64[ns]':
@@ -153,57 +158,60 @@ def exploratory_data_analysis(df):
         if any(keyword in col.lower() for keyword in ['sales', 'revenue', 'price', 'total']):
             if df[col].dtype in ['int64', 'float64']:
                 sales_cols.append(col)
-    
+
     print(f"Found date columns: {date_cols}")
     print(f"Found sales-related columns: {sales_cols}")
-    
+
     # 2. Top products analysis
     product_cols = []
     for col in df.columns:
         if any(keyword in col.lower() for keyword in ['product', 'item', 'category']):
             product_cols.append(col)
-    
+
     print(f"Found product-related columns: {product_cols}")
-    
+
     # 3. Geographic analysis
     geo_cols = []
     for col in df.columns:
         if any(keyword in col.lower() for keyword in ['country', 'city', 'region', 'state']):
             geo_cols.append(col)
-    
+
     print(f"Found geographic columns: {geo_cols}")
-    
+
     # Generate basic plots
     plt.figure(figsize=(15, 5))
-    
+
     # Plot 1: Distribution of numeric columns
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     if len(numeric_cols) > 0:
         plt.subplot(1, 3, 1)
-        df[numeric_cols[0]].hist(bins=30, alpha=0.7)
-        plt.title(f'Distribution of {numeric_cols[0]}')
-        plt.xlabel(numeric_cols[0])
-        plt.ylabel('Frequency')
-    
+        df[numeric_cols[0]].hist(bins=30, alpha=0.7, color='salmon')
+        plt.title(f'Distribution of {numeric_cols[0]}', fontsize=12)
+        plt.xlabel(numeric_cols[0], fontsize=10)
+        plt.ylabel('Frequency', fontsize=10)
+
     # Plot 2: Top categories if available
     if len(product_cols) > 0:
         plt.subplot(1, 3, 2)
         top_products = df[product_cols[0]].value_counts().head(10)
-        top_products.plot(kind='bar')
-        plt.title(f'Top 10 {product_cols[0]}')
-        plt.xticks(rotation=45)
-    
+        top_products.plot(kind='bar', color='salmon')
+        plt.title(f'Top 10 {product_cols[0]}', fontsize=12)
+        plt.xticks(rotation=45, fontsize=9)
+        plt.yticks(fontsize=9)
+
     # Plot 3: Correlation matrix
     if len(numeric_cols) > 1:
-        plt.subplot(1, 3, 3)
+        plt.figure(figsize=(20, 15))  # Increase figure size
         correlation_matrix = df[numeric_cols].corr()
-        sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', center=0)
-        plt.title('Correlation Matrix')
-    
+        sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', center=0, fmt='.2f', annot_kws={"fontsize": 10})
+        plt.title('Correlation Matrix', fontsize=16)
+        plt.xticks(rotation=45, fontsize=12)  # Rotate labels
+        plt.yticks(fontsize=12)
+
     plt.tight_layout()
     plt.savefig('visualizations/basic_eda.png', dpi=300, bbox_inches='tight')
     plt.show()
-    
+
     print("✓ Basic EDA completed! Visualizations saved to 'visualizations/' folder")
 
 def demand_forecasting_setup(df):
